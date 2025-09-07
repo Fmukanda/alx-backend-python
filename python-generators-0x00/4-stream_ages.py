@@ -2,6 +2,7 @@ import seed as sd
 import mysql.connector
 from mysql.connector import errorcode
 
+# def stream_user_ages()
 def stream_user_ages(connection):
     """
     A generator function that fetches ages from the user_data table
@@ -55,3 +56,4 @@ if __name__ == '__main__':
         finally:
             connection_db.close()
             print("\nDatabase connection closed.")
+
