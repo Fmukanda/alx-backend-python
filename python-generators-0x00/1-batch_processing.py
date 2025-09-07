@@ -1,7 +1,7 @@
 import seed as sd
 import mysql.connector
 from mysql.connector import errorcode
-
+# FROM user_data
 
 def stream_users_in_batches(connection, batch_size):
     """
@@ -56,3 +56,4 @@ if __name__ == '__main__':
         finally:
             connection_db.close()
             print("\nDatabase connection closed.")
+
