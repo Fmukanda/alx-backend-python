@@ -2,6 +2,7 @@ import seed as sd
 import mysql.connector
 from mysql.connector import errorcode
 
+# def stream_users()
 def stream_users(connection):
     """
     A generator function that fetches all rows from the user_data table
@@ -39,4 +40,5 @@ if __name__ == '__main__':
         finally:          
             connection_db.close()
             print("\nDatabase connection closed.")
+
 
