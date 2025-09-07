@@ -2,7 +2,7 @@ import seed as sd
 import mysql.connector
 from mysql.connector import errorcode
 
-def stream_users_from_db(connection):
+def stream_users(connection):
     """
     A generator function that fetches all rows from the user_data table
     one by one and yields them.
@@ -30,7 +30,7 @@ if __name__ == '__main__':
     if connection_db:
         try:
             print("\nStreaming users from the database:")
-            user_generator = stream_users_from_db(connection_db)
+            user_generator = stream_users(connection_db)
             
             for user in user_generator:
                 user_id, name, email, age = user
@@ -39,3 +39,4 @@ if __name__ == '__main__':
         finally:          
             connection_db.close()
             print("\nDatabase connection closed.")
+
