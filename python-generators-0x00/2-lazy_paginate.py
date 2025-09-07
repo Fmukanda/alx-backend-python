@@ -2,6 +2,9 @@ import seed as sd
 import mysql.connector
 from mysql.connector import errorcode
 
+# SELECT * FROM user_data LIMIT
+# paginate_users(page_size, offset)
+
 def paginate_users(connection, page_size, offset):
     """
     Fetches a single page of users from the database.
@@ -53,3 +56,4 @@ if __name__ == '__main__':
         finally:
             connection_db.close()
             print("\nDatabase connection closed.")
+
