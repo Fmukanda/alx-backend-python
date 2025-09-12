@@ -62,6 +62,7 @@ async def setup_database():
         logger.error(f"Error setting up database: {e}")
         raise
 
+## async_fetch_older_users()
 async def async_fetch_users() -> List[Dict[str, Any]]:
     """
     Asynchronously fetch all users from the database.
@@ -88,6 +89,7 @@ async def async_fetch_users() -> List[Dict[str, Any]]:
         logger.error(f"Error fetching all users: {e}")
         raise
 
+## async def async_fetch_older_users()
 async def async_fetch_older_users(age_threshold: int = 40) -> List[Dict[str, Any]]:
     """
     Asynchronously fetch users older than the specified age threshold.
