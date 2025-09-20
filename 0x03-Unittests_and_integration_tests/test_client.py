@@ -122,3 +122,21 @@ class TestIntegrationGithubOrgClient(unittest.TestCase):
         Tear down class-level fixtures after tests.
         """
         cls.get_patcher.stop()
+
+    def test_public_repos(self) -> None:
+        """
+        Test that public_repos returns the expected list of repos.
+        """
+        client = GithubOrgClient("google")
+        repos = client.public_repos()
+        self.assertEqual(repos, self.expected_repos)
+        self.assertEqual(self.mock_get.call_count, 2)
+
+    def test_public_repos_with_license(self) -> None:
+        """
+        Test that public_repos returns the expected list of repos with a license.
+        """
+        client = GithubOrgClient("google")
+        repos = client.public_repos(license="apache-2.0")
+        self.assertEqual(repos, self.apache2_repos)
+        self.assertEqual(self.mock_get.call_count, 2)
