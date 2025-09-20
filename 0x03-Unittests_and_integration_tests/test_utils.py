@@ -5,6 +5,13 @@ Unit tests for the utils.access_nested_map function.
 import unittest
 from parameterized import parameterized
 from unittest.mock import patch, Mock
+from typing import (
+    Mapping,
+    Sequence,
+    Any,
+    Dict,
+    Type,
+)
 from utils import access_nested_map, get_json, memoize
 
 
@@ -17,7 +24,8 @@ class TestAccessNestedMap(unittest.TestCase):
         ({"a": {"b": 2}}, ("a",), {"b": 2}),
         ({"a": {"b": 2}}, ("a", "b"), 2),
     ])
-    def test_access_nested_map(self, nested_map, path, expected_output):
+    def test_access_nested_map(self, nested_map: Mapping, path: Sequence,
+                               expected_output: Any) -> None:
         """
         Test that access_nested_map returns the expected value.
         """
@@ -28,7 +36,8 @@ class TestAccessNestedMap(unittest.TestCase):
         ({}, ("a",), KeyError),
         ({"a": 1}, ("a", "b"), KeyError),
     ])
-    def test_access_nested_map_exception(self, nested_map, path, expected_exception):
+    def test_access_nested_map_exception(self, nested_map: Mapping, path: Sequence,
+                                         expected_exception: Type[KeyError]) -> None:
         """
         Test that access_nested_map raises the correct exception.
         """
@@ -46,7 +55,7 @@ class TestGetJson(unittest.TestCase):
         ("http://example.com", {"payload": True}),
         ("http://holberton.io", {"payload": False}),
     ])
-    def test_get_json(self, test_url, test_payload):
+    def test_get_json(self, test_url: str, test_payload: Dict) -> None:
         """
         Test that get_json returns the expected payload.
         """
@@ -64,16 +73,16 @@ class TestMemoize(unittest.TestCase):
     """
     Test suite for the memoize decorator.
     """
-    def test_memoize(self):
+    def test_memoize(self) -> None:
         """
         Test that a_property returns the correct result and a_method is called once.
         """
         class TestClass:
-            def a_method(self):
+            def a_method(self) -> int:
                 return 42
 
             @memoize
-            def a_property(self):
+            def a_property(self) -> int:
                 return self.a_method()
 
         with patch.object(TestClass, 'a_method') as mock_method:
