@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "alxtravelapp"
+name = "messaging_app"
 version = "0.1.0"
-description = "ALX Travel App - A Django-based travel application"
+description = "Messaging App - A Django-based messaging application"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {file = "LICENSE"}
@@ -33,4 +33,5 @@ Issues = "https://github.com/yourusername/alxtravelapp/issues"
 [tool.black]
 line-length = 88
 target-version = ['py38']
+
 include = '\.pyi?$'
