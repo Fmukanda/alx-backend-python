@@ -37,7 +37,7 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.vercel.app', '.herokuapp.com']
 # Application definition
 
 INSTALLED_APPS = [
-    'listings.app.ListingsConfig'
+    'chats.app.ListingsConfig'
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -174,3 +174,4 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC
+
