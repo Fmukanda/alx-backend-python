@@ -1,38 +1,50 @@
 API Endpoints
 
-Conversations Endpoints:
-GET /api/conversations/ - List user's conversations
-POST /api/conversations/ - Create new conversation
-GET /api/conversations/{id}/ - Get conversation details with messages
-PUT/PATCH /api/conversations/{id}/ - Update conversation (admin only for groups)
-POST /api/conversations/{id}/add_participants/ - Add participants
-POST /api/conversations/{id}/leave/ - Leave conversation
-GET /api/conversations/{id}/participants/ - List participants
-GET /api/conversations/search_users/?q=query - Search users to add
+Conversations:
+GET /api/conversations/ - List conversations
+POST /api/conversations/ - Create conversation
+GET /api/conversations/{conversation_id}/ - Retrieve conversation
+PUT /api/conversations/{conversation_id}/ - Update conversation
+PATCH /api/conversations/{conversation_id}/ - Partial update
+DELETE /api/conversations/{conversation_id}/ - Delete conversation
 
-Messages Endpoints:
-GET /api/messages/?conversation={id} - List messages in conversation
-POST /api/messages/ - Send new message
-GET /api/messages/{id}/ - Get message details
-POST /api/messages/{id}/mark_read/ - Mark message as read
-POST /api/messages/mark_conversation_read/ - Mark all messages as read
-POST /api/messages/{id}/reply/ - Reply to message
+Messages:
+GET /api/messages/ - List messages
+POST /api/messages/ - Create message
+GET /api/messages/{message_id}/ - Retrieve message
+PUT /api/messages/{message_id}/ - Update message
+PATCH /api/messages/{message_id}/ - Partial update
+DELETE /api/messages/{message_id}/ - Delete message
 
-Example Usage:
-Create a new conversation:
-POST /api/conversations/
-{
-    "is_group": false,
-    "participant_emails": ["user2@example.com"]
-}
+Custom Actions (automatically available):
+POST /api/conversations/{conversation_id}/add_participants/
+POST /api/conversations/{conversation_id}/leave/
+GET /api/conversations/{conversation_id}/participants/
+GET /api/conversations/search_users/
+POST /api/messages/{message_id}/mark_read/
+POST /api/messages/mark_conversation_read/
+POST /api/messages/{message_id}/reply/
 
-Send a message:
-POST /api/messages/
-{
-    "conversation": "conversation-uuid-here",
-    "message_body": "Hello there!",
-    "message_type": "text"
-}
+Additional Custom Endpoints:
+GET /api/health/ - Health check
+GET/POST /api/conversations/{conversation_id}/messages/ - Conversation messages
 
-Get conversation messages:
-GET /api/messages/?conversation=conversation-uuid-here
+Testing the API Endpoints
+You can test the endpoints using Django's built-in development server:
+
+bash
+# Run the server
+python manage.py runserver
+
+# Test endpoints (using curl examples)
+curl http://localhost:8000/api/health/
+curl http://localhost:8000/api/conversations/
+curl http://localhost:8000/api/conversations/{conversation_id}/messages/
+Accessing the Browsable API
+With this setup, you can also access the DRF browsable API at:
+
+http://localhost:8000/api/conversations/
+
+http://localhost:8000/api/messages/
+
+The browsable API provides a web interface to test your endpoints directly from the browser.
