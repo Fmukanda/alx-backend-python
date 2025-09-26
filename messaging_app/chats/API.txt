@@ -1,0 +1,38 @@
+API Endpoints
+
+Conversations Endpoints:
+GET /api/conversations/ - List user's conversations
+POST /api/conversations/ - Create new conversation
+GET /api/conversations/{id}/ - Get conversation details with messages
+PUT/PATCH /api/conversations/{id}/ - Update conversation (admin only for groups)
+POST /api/conversations/{id}/add_participants/ - Add participants
+POST /api/conversations/{id}/leave/ - Leave conversation
+GET /api/conversations/{id}/participants/ - List participants
+GET /api/conversations/search_users/?q=query - Search users to add
+
+Messages Endpoints:
+GET /api/messages/?conversation={id} - List messages in conversation
+POST /api/messages/ - Send new message
+GET /api/messages/{id}/ - Get message details
+POST /api/messages/{id}/mark_read/ - Mark message as read
+POST /api/messages/mark_conversation_read/ - Mark all messages as read
+POST /api/messages/{id}/reply/ - Reply to message
+
+Example Usage:
+Create a new conversation:
+POST /api/conversations/
+{
+    "is_group": false,
+    "participant_emails": ["user2@example.com"]
+}
+
+Send a message:
+POST /api/messages/
+{
+    "conversation": "conversation-uuid-here",
+    "message_body": "Hello there!",
+    "message_type": "text"
+}
+
+Get conversation messages:
+GET /api/messages/?conversation=conversation-uuid-here
