@@ -40,6 +40,10 @@ class ConversationViewSet(viewsets.ModelViewSet):
             participants__user=user,
             participants__is_active=True
         ).distinct().order_by('-updated_at')
+
+        # Ensure user can only access their own conversations
+        if not user.is_authenticated:
+            return Conversation.objects.none()
         
         # Handle nested routing - if we're accessing via conversation-specific endpoints
         conversation_id = self.kwargs.get('conversation_pk')
@@ -59,7 +63,11 @@ class ConversationViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(conversation_type=conversation_type)
         
         return queryset
-    
+
+    def perform_create(self, serializer):
+        """Automatically set the creator when creating a conversation"""
+        serializer.save(created_by=self.request.user)
+        
     def list(self, request, *args, **kwargs):
         """List conversations with optimized querying and filtering"""
         queryset = self.filter_queryset(self.get_queryset())
@@ -285,6 +293,10 @@ class MessageViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Return messages from conversations where user is a participant"""
         user = self.request.user
+        
+        if not user.is_authenticated:
+            return Message.objects.none()
+        
         queryset = Message.objects.filter(
             conversation__participants__user=user,
             conversation__participants__is_active=True
@@ -317,6 +329,10 @@ class MessageViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(sender__user_id=sender_id)
         
         return queryset
+
+    def perform_create(self, serializer):
+        """Automatically set the sender when creating a message"""
+        serializer.save(sender=self.request.user)
     
     def list(self, request, *args, **kwargs):
         """List messages with conversation filtering - now handles nested routes"""
@@ -494,8 +510,11 @@ class ConversationParticipantViewSet(viewsets.ModelViewSet):
     filterset_fields = ['role', 'is_active']
     
     def get_queryset(self):
-        """Return participants for conversations where user is admin"""
+        """Return participants for conversations where user has access"""
         user = self.request.user
+        
+        if not user.is_authenticated:
+            return ConversationParticipant.objects.none()
         
         # Handle nested routing for conversation participants
         conversation_id = self.kwargs.get('conversation_pk')
@@ -600,4 +619,5 @@ class ConversationParticipantViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(participants, many=True)
         return Response(serializer.data)
+
 
