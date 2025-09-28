@@ -41,6 +41,11 @@ class ConversationViewSet(viewsets.ModelViewSet):
             participants__is_active=True
         ).distinct().order_by('-updated_at')
         
+        # Handle nested routing - if we're accessing via conversation-specific endpoints
+        conversation_id = self.kwargs.get('conversation_pk')
+        if conversation_id:
+            queryset = queryset.filter(conversation_id=conversation_id)
+        
         # Additional filtering based on query parameters
         is_group = self.request.query_params.get('is_group')
         if is_group is not None:
@@ -285,6 +290,16 @@ class MessageViewSet(viewsets.ModelViewSet):
             conversation__participants__is_active=True
         ).distinct().order_by('-sent_at')
         
+        # Handle nested routing for conversation messages
+        conversation_id = self.kwargs.get('conversation_pk')
+        if conversation_id:
+            queryset = queryset.filter(conversation__conversation_id=conversation_id)
+        
+        # Handle nested routing for message replies
+        parent_message_id = self.kwargs.get('message_pk')
+        if parent_message_id:
+            queryset = queryset.filter(replied_to__message_id=parent_message_id)
+        
         # Additional filtering based on query parameters
         message_type = self.request.query_params.get('message_type')
         if message_type:
@@ -304,24 +319,25 @@ class MessageViewSet(viewsets.ModelViewSet):
         return queryset
     
     def list(self, request, *args, **kwargs):
-        """List messages with conversation filtering"""
-        conversation_id = request.query_params.get('conversation')
+        """List messages with conversation filtering - now handles nested routes"""
+        conversation_id = self.kwargs.get('conversation_pk') or request.query_params.get('conversation')
         
-        if not conversation_id:
+        if not conversation_id and not self.kwargs.get('message_pk'):
             return Response(
-                {"detail": "Conversation ID is required as query parameter."},
+                {"detail": "Conversation ID is required as query parameter or via nested URL."},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Verify user has access to this conversation
-        conversation = get_object_or_404(
-            Conversation,
-            conversation_id=conversation_id,
-            participants__user=request.user,
-            participants__is_active=True
-        )
+        # If we have a conversation ID from nested route, verify access
+        if conversation_id:
+            conversation = get_object_or_404(
+                Conversation,
+                conversation_id=conversation_id,
+                participants__user=request.user,
+                participants__is_active=True
+            )
         
-        messages = self.filter_queryset(self.get_queryset().filter(conversation=conversation))
+        messages = self.filter_queryset(self.get_queryset())
         
         # Pagination
         page = self.paginate_queryset(messages)
@@ -481,11 +497,22 @@ class ConversationParticipantViewSet(viewsets.ModelViewSet):
         """Return participants for conversations where user is admin"""
         user = self.request.user
         
-        queryset = ConversationParticipant.objects.filter(
-            conversation__participants__user=user,
-            conversation__participants__role='admin',
-            conversation__is_group=True
-        ).distinct()
+        # Handle nested routing for conversation participants
+        conversation_id = self.kwargs.get('conversation_pk')
+        if conversation_id:
+            # When nested under conversation, user must be participant (not necessarily admin)
+            queryset = ConversationParticipant.objects.filter(
+                conversation__conversation_id=conversation_id,
+                conversation__participants__user=user,
+                conversation__participants__is_active=True
+            )
+        else:
+            # When not nested, user must be admin
+            queryset = ConversationParticipant.objects.filter(
+                conversation__participants__user=user,
+                conversation__participants__role='admin',
+                conversation__is_group=True
+            ).distinct()
         
         # Additional filtering based on query parameters
         role = self.request.query_params.get('role')
@@ -573,3 +600,4 @@ class ConversationParticipantViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(participants, many=True)
         return Response(serializer.data)
+
