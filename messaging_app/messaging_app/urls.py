@@ -9,6 +9,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     
     # API endpoints - include messaging app URLs under /api/
+    # "api/"
     path('api/', include('messaging.urls')),
     
     # DRF browsable API authentication
@@ -19,3 +20,4 @@ urlpatterns = [
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
