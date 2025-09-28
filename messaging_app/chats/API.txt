@@ -92,3 +92,32 @@ http://localhost:8000/api/conversations/
 http://localhost:8000/api/messages/
 
 The browsable API provides a web interface to test your endpoints directly from the browser.
+
+================================================================================================
+Registration:
+bash
+POST /api/auth/register/
+{
+    "email": "user@example.com",
+    "password": "securepassword123",
+    "password2": "securepassword123",
+    "first_name": "John",
+    "last_name": "Doe"
+}
+Login:
+bash
+POST /api/auth/login/
+{
+    "email": "user@example.com",
+    "password": "securepassword123"
+}
+Access Protected Endpoints:
+bash
+GET /api/conversations/
+Authorization: Bearer <your_access_token>
+Refresh Token:
+bash
+POST /api/auth/token/refresh/
+{
+    "refresh": "<your_refresh_token>"
+}
