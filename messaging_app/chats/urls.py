@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from . import views
 
 # Create a DefaultRouter instance - this automatically generates URLs for viewsets
+# routers.DefaultRouter()
 router = DefaultRouter()
 
 # Register viewsets with the router
@@ -35,3 +36,4 @@ urlpatterns = [
 #     path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
 #     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 # ]
+
