@@ -1,0 +1,123 @@
+API Endpoints
+
+Base URLs (from DefaultRouter):
+text
+/conversations/
+/conversations/{conversation_id}/
+/messages/
+/messages/{message_id}/
+/participants/
+/participants/{participant_id}/
+Nested URLs (from NestedDefaultRouter):
+text
+/conversations/{conversation_id}/messages/
+/conversations/{conversation_id}/messages/{message_id}/
+/conversations/{conversation_id}/participants/
+/conversations/{conversation_id}/participants/{participant_id}/
+/messages/{message_id}/replies/
+/messages/{message_id}/replies/{reply_id}/
+Custom URLs:
+text
+/health/
+/conversations/search/
+/messages/search/
+/messages/mark_conversation_read/
+/users/search/
+=====================================================================================================================
+Conversation Filters:
+text
+GET /api/conversations/?is_group=true
+GET /api/conversations/?conversation_type=work
+GET /api/conversations/?q=john
+GET /api/conversations/1/participants/?role=admin
+Message Filters:
+text
+GET /api/messages/?conversation=123&message_type=text
+GET /api/messages/?conversation=123&read=false
+GET /api/messages/?conversation=123&q=hello
+GET /api/messages/?sender=user123
+Participant Filters:
+text
+GET /api/participants/?role=member
+GET /api/participants/?is_active=true
+GET /api/participants/?conversation=conv123
+GET /api/participants/conversation_participants/?conversation_id=conv123&role=admin
+
+===========================================================================================================
+Conversations:
+GET /api/conversations/ - List conversations
+POST /api/conversations/ - Create conversation
+GET /api/conversations/{conversation_id}/ - Retrieve conversation
+PUT /api/conversations/{conversation_id}/ - Update conversation
+PATCH /api/conversations/{conversation_id}/ - Partial update
+DELETE /api/conversations/{conversation_id}/ - Delete conversation
+
+Messages:
+GET /api/messages/ - List messages
+POST /api/messages/ - Create message
+GET /api/messages/{message_id}/ - Retrieve message
+PUT /api/messages/{message_id}/ - Update message
+PATCH /api/messages/{message_id}/ - Partial update
+DELETE /api/messages/{message_id}/ - Delete message
+
+Custom Actions (automatically available):
+POST /api/conversations/{conversation_id}/add_participants/
+POST /api/conversations/{conversation_id}/leave/
+GET /api/conversations/{conversation_id}/participants/
+GET /api/conversations/search_users/
+POST /api/messages/{message_id}/mark_read/
+POST /api/messages/mark_conversation_read/
+POST /api/messages/{message_id}/reply/
+
+Additional Custom Endpoints:
+GET /api/health/ - Health check
+GET/POST /api/conversations/{conversation_id}/messages/ - Conversation messages
+
+Testing the API Endpoints
+You can test the endpoints using Django's built-in development server:
+
+bash
+# Run the server
+python manage.py runserver
+
+# Test endpoints (using curl examples)
+curl http://localhost:8000/api/health/
+curl http://localhost:8000/api/conversations/
+curl http://localhost:8000/api/conversations/{conversation_id}/messages/
+Accessing the Browsable API
+With this setup, you can also access the DRF browsable API at:
+
+http://localhost:8000/api/conversations/
+
+http://localhost:8000/api/messages/
+
+The browsable API provides a web interface to test your endpoints directly from the browser.
+
+================================================================================================
+Registration:
+bash
+POST /api/auth/register/
+{
+    "email": "user@example.com",
+    "password": "securepassword123",
+    "password2": "securepassword123",
+    "first_name": "John",
+    "last_name": "Doe"
+}
+Login:
+bash
+POST /api/auth/login/
+{
+    "email": "user@example.com",
+    "password": "securepassword123"
+}
+Access Protected Endpoints:
+bash
+GET /api/conversations/
+Authorization: Bearer <your_access_token>
+Refresh Token:
+bash
+POST /api/auth/token/refresh/
+{
+    "refresh": "<your_refresh_token>"
+}
