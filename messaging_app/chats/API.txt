@@ -1,4 +1,29 @@
 API Endpoints
+
+Base URLs (from DefaultRouter):
+text
+/conversations/
+/conversations/{conversation_id}/
+/messages/
+/messages/{message_id}/
+/participants/
+/participants/{participant_id}/
+Nested URLs (from NestedDefaultRouter):
+text
+/conversations/{conversation_id}/messages/
+/conversations/{conversation_id}/messages/{message_id}/
+/conversations/{conversation_id}/participants/
+/conversations/{conversation_id}/participants/{participant_id}/
+/messages/{message_id}/replies/
+/messages/{message_id}/replies/{reply_id}/
+Custom URLs:
+text
+/health/
+/conversations/search/
+/messages/search/
+/messages/mark_conversation_read/
+/users/search/
+=====================================================================================================================
 Conversation Filters:
 text
 GET /api/conversations/?is_group=true
