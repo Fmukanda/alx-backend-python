@@ -1,11 +1,12 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
+from django.contrib.auth.password_validation import validate_password
 from .models import User, Conversation, ConversationParticipant, Message, MessageRecipient
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """Serializer for user registration"""
-    password = serializers.CharField(write_only=True, min_length=8)
+    password = serializers.CharField(write_only=True, min_length=8, validators=[validate_password])
     password_confirm = serializers.CharField(write_only=True)
     
     class Meta:
@@ -15,6 +16,10 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             'first_name', 'last_name', 'phone_number', 'role'
         )
         read_only_fields = ('user_id',)
+        extra_kwargs = {
+            'first_name': {'required': True},
+            'last_name': {'required': True}
+        }
     
     def validate_email(self, value):
         """Validate that email is unique and properly formatted"""
@@ -69,9 +74,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = (
             'user_id', 'email', 'first_name', 'last_name', 'full_name',
             'phone_number', 'role', 'profile_picture', 'is_online', 
-            'last_seen', 'created_at'
+            'last_seen', 'created_at', 'date_joined', 'last_login'
         )
-        read_only_fields = ('user_id', 'email', 'created_at')
+        read_only_fields = ('user_id', 'email', 'created_at', 'date_joined', 'last_login')
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
@@ -87,6 +92,24 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         # Handle profile picture upload if needed
         return super().update(instance, validated_data)
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """Serializer for password change"""
+    old_password = serializers.CharField(required=True, write_only=True)
+    new_password = serializers.CharField(required=True, write_only=True, validators=[validate_password])
+    new_password_confirm = serializers.CharField(required=True, write_only=True)
+    
+    def validate_old_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Old password is incorrect.")
+        return value
+    
+    def validate(self, data):
+        if data['new_password'] != data['new_password_confirm']:
+            raise serializers.ValidationError({"new_password_confirm": "New passwords do not match."})
+        return data
 
 
 class MinimalUserSerializer(serializers.ModelSerializer):
@@ -120,50 +143,53 @@ class MessageSerializer(serializers.ModelSerializer):
         allow_null=True
     )
     replied_to_preview = serializers.SerializerMethodField()
+    is_own_message = serializers.SerializerMethodField()
     
     class Meta:
         model = Message
         fields = (
             'message_id', 'conversation', 'sender', 'message_body', 
             'message_type', 'attachment', 'attachment_name', 'replied_to',
-            'replied_to_preview', 'sent_at', 'read', 'read_at', 'recipients'
+            'replied_to_preview', 'sent_at', 'read', 'read_at', 'recipients',
+            'is_own_message'
         )
-        read_only_fields = ('message_id', 'sender', 'sent_at', 'read_at', 'recipients')
+        read_only_fields = ('message_id', 'sender', 'sent_at', 'read_at', 'recipients', 'is_own_message')
     
     def get_replied_to_preview(self, obj):
         """Get preview of replied message"""
         if obj.replied_to:
-            return obj.replied_to.preview
+            return {
+                'message_id': obj.replied_to.message_id,
+                'sender_name': obj.replied_to.sender.get_full_name(),
+                'preview': obj.replied_to.preview,
+                'message_type': obj.replied_to.message_type
+            }
         return None
     
-    def create(self, validated_data):
-        """Create a new message"""
-        # Set the sender from the request user
-        validated_data['sender'] = self.context['request'].user
-        message = Message.objects.create(**validated_data)
-        
-        # Create recipient entries for all conversation participants except sender
-        conversation = validated_data['conversation']
-        participants = conversation.participants.exclude(user=validated_data['sender'])
-        
-        for participant in participants:
-            MessageRecipient.objects.create(
-                message=message,
-                recipient=participant.user,
-                delivered=True  # Assuming immediate delivery for simplicity
-            )
-        
-        return message
+    def get_is_own_message(self, obj):
+        """Check if the current user is the sender of this message"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.sender == request.user
+        return False
 
 
 class ConversationParticipantSerializer(serializers.ModelSerializer):
     """Serializer for conversation participants"""
     user = MinimalUserSerializer(read_only=True)
+    is_self = serializers.SerializerMethodField()
     
     class Meta:
         model = ConversationParticipant
-        fields = ('id', 'user', 'joined_at', 'is_active', 'role')
+        fields = ('id', 'user', 'joined_at', 'is_active', 'role', 'is_self')
         read_only_fields = fields
+    
+    def get_is_self(self, obj):
+        """Check if this participant is the current user"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.user == request.user
+        return False
 
 
 class ConversationListSerializer(serializers.ModelSerializer):
@@ -172,13 +198,14 @@ class ConversationListSerializer(serializers.ModelSerializer):
     last_message = serializers.SerializerMethodField()
     unread_count = serializers.SerializerMethodField()
     other_participants = serializers.SerializerMethodField()
+    is_online = serializers.SerializerMethodField()
     
     class Meta:
         model = Conversation
         fields = (
             'conversation_id', 'is_group', 'group_name', 'group_description',
             'participants', 'other_participants', 'last_message', 'unread_count',
-            'created_at', 'updated_at'
+            'is_online', 'created_at', 'updated_at'
         )
         read_only_fields = fields
     
@@ -188,10 +215,11 @@ class ConversationListSerializer(serializers.ModelSerializer):
         if last_message:
             return {
                 'message_id': last_message.message_id,
-                'sender': MinimalUserSerializer(last_message.sender).data,
+                'sender': MinimalUserSerializer(last_message.sender, context=self.context).data,
                 'preview': last_message.preview,
                 'message_type': last_message.message_type,
-                'sent_at': last_message.sent_at
+                'sent_at': last_message.sent_at,
+                'is_own': last_message.sender == self.context.get('request').user
             }
         return None
     
@@ -207,8 +235,19 @@ class ConversationListSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             participants = obj.participants.exclude(user=request.user)
-            return ConversationParticipantSerializer(participants, many=True).data
-        return ConversationParticipantSerializer(obj.participants, many=True).data
+            return ConversationParticipantSerializer(
+                participants, many=True, context=self.context
+            ).data
+        return []
+    
+    def get_is_online(self, obj):
+        """Check if any other participant is online"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and not obj.is_group:
+            other_participant = obj.participants.exclude(user=request.user).first()
+            if other_participant:
+                return other_participant.user.is_online
+        return False
 
 
 class ConversationDetailSerializer(serializers.ModelSerializer):
@@ -216,12 +255,13 @@ class ConversationDetailSerializer(serializers.ModelSerializer):
     participants = ConversationParticipantSerializer(many=True, read_only=True)
     messages = serializers.SerializerMethodField()
     other_participants = serializers.SerializerMethodField()
+    current_user_role = serializers.SerializerMethodField()
     
     class Meta:
         model = Conversation
         fields = (
             'conversation_id', 'is_group', 'group_name', 'group_description',
-            'participants', 'other_participants', 'messages', 
+            'participants', 'other_participants', 'messages', 'current_user_role',
             'created_at', 'updated_at'
         )
         read_only_fields = fields
@@ -244,8 +284,18 @@ class ConversationDetailSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             participants = obj.participants.exclude(user=request.user)
-            return ConversationParticipantSerializer(participants, many=True).data
-        return ConversationParticipantSerializer(obj.participants, many=True).data
+            return ConversationParticipantSerializer(
+                participants, many=True, context=self.context
+            ).data
+        return []
+    
+    def get_current_user_role(self, obj):
+        """Get the role of the current user in this conversation"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            participant = obj.participants.filter(user=request.user).first()
+            return participant.role if participant else None
+        return None
 
 
 class ConversationCreateSerializer(serializers.ModelSerializer):
@@ -281,6 +331,12 @@ class ConversationCreateSerializer(serializers.ModelSerializer):
                 "group_name": "Group name is required for group conversations."
             })
         
+        # For 1-on-1 conversations, ensure exactly one other participant
+        if not is_group and len(participant_emails) + len(participant_ids) != 1:
+            raise serializers.ValidationError({
+                "participants": "1-on-1 conversations must have exactly one other participant."
+            })
+        
         if not participant_emails and not participant_ids:
             raise serializers.ValidationError({
                 "participants": "At least one participant is required."
@@ -297,7 +353,7 @@ class ConversationCreateSerializer(serializers.ModelSerializer):
         # Create conversation
         conversation = Conversation.objects.create(**validated_data)
         
-        # Add current user as participant
+        # Add current user as participant with admin role for groups
         if request and request.user.is_authenticated:
             ConversationParticipant.objects.create(
                 conversation=conversation,
@@ -311,7 +367,8 @@ class ConversationCreateSerializer(serializers.ModelSerializer):
                 user = User.objects.get(email=email.lower())
                 ConversationParticipant.objects.get_or_create(
                     conversation=conversation,
-                    user=user
+                    user=user,
+                    defaults={'role': 'member'}
                 )
             except User.DoesNotExist:
                 # Handle case where user doesn't exist
@@ -323,7 +380,8 @@ class ConversationCreateSerializer(serializers.ModelSerializer):
                 user = User.objects.get(user_id=user_id)
                 ConversationParticipant.objects.get_or_create(
                     conversation=conversation,
-                    user=user
+                    user=user,
+                    defaults={'role': 'member'}
                 )
             except User.DoesNotExist:
                 # Handle case where user doesn't exist
@@ -347,7 +405,7 @@ class MessageCreateSerializer(serializers.ModelSerializer):
         """Validate that user is a participant in the conversation"""
         request = self.context.get('request')
         if request and request.user.is_authenticated:
-            if not value.participants.filter(user=request.user).exists():
+            if not value.participants.filter(user=request.user, is_active=True).exists():
                 raise serializers.ValidationError(
                     "You are not a participant in this conversation."
                 )
@@ -355,8 +413,15 @@ class MessageCreateSerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
         """Create a new message with the current user as sender"""
-        validated_data['sender'] = self.context['request'].user
-        return super().create(validated_data)
+        request = self.context.get('request')
+        validated_data['sender'] = request.user
+        
+        message = super().create(validated_data)
+        
+        # Update conversation's updated_at timestamp
+        message.conversation.save()
+        
+        return message
 
 
 class ConversationUpdateSerializer(serializers.ModelSerializer):
@@ -421,18 +486,60 @@ class AttachmentUploadSerializer(serializers.Serializer):
         if value.size > max_size:
             raise serializers.ValidationError("File size must be less than 10MB.")
         
-        allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 
-                        'text/plain', 'application/msword', 
-                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+        allowed_types = [
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+            'application/pdf', 'text/plain', 'application/msword', 
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        ]
         
         if value.content_type not in allowed_types:
             raise serializers.ValidationError("File type not allowed.")
         
         return value
 
+
+class TokenResponseSerializer(serializers.Serializer):
+    """Serializer for JWT token responses"""
+    access_token = serializers.CharField()
+    refresh_token = serializers.CharField()
+    user = UserProfileSerializer()
+
+
+class RefreshTokenSerializer(serializers.Serializer):
+    """Serializer for token refresh"""
+    refresh_token = serializers.CharField(required=True)
+
+
+class LoginResponseSerializer(serializers.Serializer):
+    """Serializer for login response"""
+    user = UserProfileSerializer()
+    access_token = serializers.CharField()
+    refresh_token = serializers.CharField()
+
+
+# Example usage patterns:
+"""
+# For user registration
+serializer = UserRegistrationSerializer(data=request.data)
+
+# For user login
+serializer = UserLoginSerializer(data=request.data)
+
 # For creating a conversation
-"""serializer = ConversationCreateSerializer(data=request.data, context={'request': request})"""
+serializer = ConversationCreateSerializer(data=request.data, context={'request': request})
+
 # For listing conversations with last message preview
-"""serializer = ConversationListSerializer(conversations, many=True, context={'request': request})"""
+serializer = ConversationListSerializer(conversations, many=True, context={'request': request})
+
 # For detailed conversation view with messages
-"""serializer = ConversationDetailSerializer(conversation, context={'request': request})"""
+serializer = ConversationDetailSerializer(conversation, context={'request': request})
+
+# For JWT token responses
+serializer = TokenResponseSerializer({
+    'access_token': access_token,
+    'refresh_token': refresh_token,
+    'user': user
+})
+"""
