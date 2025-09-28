@@ -1,18 +1,13 @@
-# messaging/views.py (add this at the bottom)
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework import status
-from django.utils import timezone
+from rest_framework import permissions
 
 @api_view(['GET'])
-@permission_classes([])  # No authentication required
+@permission_classes([permissions.AllowAny])
 def health_check(request):
-    """
-    Health check endpoint for API monitoring
-    """
+    """Health check endpoint that doesn't require authentication"""
     return Response({
         'status': 'healthy',
-        'service': 'Messaging API',
-        'timestamp': timezone.now().isoformat(),
-        'version': '1.0.0'
+        'message': 'Messaging API is running',
+        'timestamp': timezone.now().isoformat()
     })
