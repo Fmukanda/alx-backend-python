@@ -1,0 +1,53 @@
+POST /api/auth/register/
+Body:
+{
+    "email": "user@example.com",
+    "password": "securepassword123",
+    "password_confirm": "securepassword123",
+    "first_name": "John",
+    "last_name": "Doe"
+}
+
+POST /api/auth/login/
+Body:
+{
+    "email": "user@example.com",
+    "password": "securepassword123"
+}
+
+POST /api/auth/token/refresh/
+Body:
+{
+    "refresh": "your_refresh_token"
+}
+
+POST /api/conversations/
+Headers: Authorization: Bearer <access_token>
+Body:
+{
+    "participant_emails": ["user2@example.com"],
+    "is_group": false
+}
+
+GET /api/conversations/
+Headers: Authorization: Bearer <access_token>
+
+POST /api/messages/
+Headers: Authorization: Bearer <access_token>
+Body:
+{
+    "conversation": "conversation_uuid",
+    "message_body": "Hello, this is a test message",
+    "message_type": "text"
+}
+
+GET /api/conversations/
+# Without Authorization header - Should return 401
+
+GET /api/conversations/other_users_conversation_id/
+Headers: Authorization: Bearer <your_token>
+# Should return 404 or 403
+
+GET /api/messages/?conversation=uuid&start_date=2024-01-01&end_date=2024-12-31
+Headers: Authorization: Bearer <access_token>
+
