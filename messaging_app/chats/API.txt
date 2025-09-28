@@ -1,5 +1,24 @@
 API Endpoints
+Conversation Filters:
+text
+GET /api/conversations/?is_group=true
+GET /api/conversations/?conversation_type=work
+GET /api/conversations/?q=john
+GET /api/conversations/1/participants/?role=admin
+Message Filters:
+text
+GET /api/messages/?conversation=123&message_type=text
+GET /api/messages/?conversation=123&read=false
+GET /api/messages/?conversation=123&q=hello
+GET /api/messages/?sender=user123
+Participant Filters:
+text
+GET /api/participants/?role=member
+GET /api/participants/?is_active=true
+GET /api/participants/?conversation=conv123
+GET /api/participants/conversation_participants/?conversation_id=conv123&role=admin
 
+===========================================================================================================
 Conversations:
 GET /api/conversations/ - List conversations
 POST /api/conversations/ - Create conversation
