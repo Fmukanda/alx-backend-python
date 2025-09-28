@@ -12,16 +12,19 @@ from .serializers import (
     ConversationParticipantSerializer, ConversationParticipantUpdateSerializer,
     UserSearchSerializer
 )
+from .permissions import IsParticipantOfConversation, IsMessageSender, IsConversationAdmin
+from .filters import MessageFilter, ConversationFilter
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
     """
     ViewSet for handling conversations
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsParticipantOfConversation]
     queryset = Conversation.objects.all()
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['is_group', 'conversation_type']
+    filterset_class = ConversationFilter
     
     def get_serializer_class(self):
         """Return appropriate serializer class based on action"""
@@ -279,10 +282,10 @@ class MessageViewSet(viewsets.ModelViewSet):
     """
     ViewSet for handling messages
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsParticipantOfConversation, IsMessageSender]
     queryset = Message.objects.all()
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['message_type', 'read', 'sender']
+    filterset_class = MessageFilter
     
     def get_serializer_class(self):
         """Return appropriate serializer class based on action"""
@@ -619,5 +622,6 @@ class ConversationParticipantViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(participants, many=True)
         return Response(serializer.data)
+
 
 
