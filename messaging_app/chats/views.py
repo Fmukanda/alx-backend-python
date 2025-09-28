@@ -13,7 +13,8 @@ from .serializers import (
     UserSearchSerializer
 )
 from .permissions import IsParticipantOfConversation, IsMessageSender, IsConversationAdmin
-from .filters import MessageFilter, ConversationFilter
+from .filters import MessageFilter, ConversationFilter, UserFilter
+from .pagination import MessagePagination, ConversationPagination, UserPagination
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
@@ -25,6 +26,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['is_group', 'conversation_type']
     filterset_class = ConversationFilter
+    pagination_class = ConversationPagination
     
     def get_serializer_class(self):
         """Return appropriate serializer class based on action"""
@@ -225,7 +227,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def search_users(self, request):
-        """Search users to add to conversations"""
+        """Search users to add to conversations with pagination"""
         query = request.query_params.get('q', '')
         
         if not query or len(query) < 2:
@@ -241,8 +243,16 @@ class ConversationViewSet(viewsets.ModelViewSet):
             Q(last_name__icontains=query)
         ).exclude(user_id=request.user.user_id)
         
-        serializer = UserSearchSerializer(users, many=True)
-        return Response(serializer.data)
+        # Apply filtering
+        user_filter = UserFilter(request.GET, queryset=users, request=request)
+        filtered_users = user_filter.qs
+        
+        # Apply pagination
+        paginator = UserPagination()
+        paginated_users = paginator.paginate_queryset(filtered_users, request, view=self)
+        serializer = UserSearchSerializer(paginated_users, many=True)
+        
+        return paginator.get_paginated_response(serializer.data)
     
     @action(detail=False, methods=['get'])
     def search(self, request):
@@ -286,6 +296,7 @@ class MessageViewSet(viewsets.ModelViewSet):
     queryset = Message.objects.all()
     filter_backends = [DjangoFilterBackend]
     filterset_class = MessageFilter
+    pagination_class = MessagePagination
     
     def get_serializer_class(self):
         """Return appropriate serializer class based on action"""
@@ -622,6 +633,7 @@ class ConversationParticipantViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(participants, many=True)
         return Response(serializer.data)
+
 
 
 
