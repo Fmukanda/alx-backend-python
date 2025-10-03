@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Conversations</title>
+    <style>
+        .conversation-item { 
+            border: 1px solid #dee2e6; 
+            border-radius: 5px; 
+            margin-bottom: 15px; 
+            padding: 15px;
+            transition: background-color 0.2s;
+        }
+        .conversation-item:hover { background-color: #f8f9fa; }
+        .conversation-header { display: flex; justify-content: between; align-items: center; }
+        .unread-badge { background: #007bff; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; }
+        .reply-count { color: #6c757d; font-size: 0.9em; }
+        .last-activity { color: #6c757d; font-size: 0.85em; }
+        .search-box { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Your Conversations</h2>
+        
+        <div class="search-box">
+            <form method="get" action="{% url 'search_conversations' %}">
+                <div class="input-group">
+                    <input type="text" name="q" class="form-control" placeholder="Search conversations..." value="{{ query }}">
+                    <button type="submit" class="btn btn-primary">Search</button>
+                </div>
+            </form>
+        </div>
+
+        {% if conversations %}
+            {% for conversation in conversations %}
+            <div class="conversation-item">
+                <div class="conversation-header">
+                    <div>
+                        <h5>
+                            <a href="{% url 'message_thread' conversation.id %}">
+                                Conversation with 
+                                {% if conversation.sender == request.user %}
+                                    {{ conversation.receiver.username }}
+                                {% else %}
+                                    {{ conversation.sender.username }}
+                                {% endif %}
+                            </a>
+                        </h5>
+                        <p class="mb-1">{{ conversation.content|truncatewords:30 }}</p>
+                    </div>
+                    <div class="text-right">
+                        {% if conversation.unread_count %}
+                        <span class="unread-badge">{{ conversation.unread_count }} unread</span>
+                        {% endif %}
+                        {% if conversation.reply_count %}
+                        <div class="reply-count">{{ conversation.reply_count }} repl{{ conversation.reply_count|pluralize:"y,ies" }}</div>
+                        {% endif %}
+                        <div class="last-activity">{{ conversation.timestamp|timesince }} ago</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+            <nav aria-label="Conversation pages">
+                <ul class="pagination">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                    <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                    </li>
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="alert alert-info">
+                {% if query %}
+                    No conversations found matching "{{ query }}".
+                {% else %}
+                    You don't have any conversations yet. <a href="{% url 'send_message' %}">Start a conversation</a>.
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>

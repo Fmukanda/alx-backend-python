@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Message</title>
+</head>
+<body>
+    <div class="container">
+        <h2>Edit Message</h2>
+        
+        <form method="post" id="edit-form">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label for="id_content">Message Content:</label>
+                {{ form.content }}
+            </div>
+            
+            {% if form.edit_reason %}
+            <div class="form-group">
+                <label for="id_edit_reason">Edit Reason (optional):</label>
+                {{ form.edit_reason }}
+            </div>
+            {% endif %}
+            
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <a href="{% url 'message_detail' message.id %}" class="btn btn-secondary">Cancel</a>
+        </form>
+
+        {% if message.edit_count > 0 %}
+        <div class="mt-4">
+            <h4>Previous Edits: {{ message.edit_count }}</h4>
+            <p>Last edited: {{ message.edited_at }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+    document.getElementById('edit-form').addEventListener('submit', function(e) {
+        const content = document.getElementById('id_content').value.trim();
+        if (!content) {
+            e.preventDefault();
+            alert('Message content cannot be empty.');
+        }
+    });
+    </script>
+</body>
+</html>

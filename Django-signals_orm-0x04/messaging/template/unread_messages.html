@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Unread Messages</title>
+    <style>
+        .unread-header { 
+            background: #fff3cd; 
+            border: 1px solid #ffeaa7; 
+            padding: 20px; 
+            border-radius: 5px; 
+            margin-bottom: 20px;
+        }
+        .conversation-group { 
+            border: 1px solid #dee2e6; 
+            border-radius: 5px; 
+            margin-bottom: 20px; 
+            overflow: hidden;
+        }
+        .conversation-header { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-bottom: 1px solid #dee2e6;
+        }
+        .unread-message { 
+            padding: 15px; 
+            border-bottom: 1px solid #e9ecef;
+            background: white;
+        }
+        .unread-message:last-child { border-bottom: none; }
+        .message-actions { margin-top: 10px; }
+        .btn-mark-read { 
+            background: #28a745; 
+            color: white; 
+            border: none; 
+            padding: 5px 10px; 
+            border-radius: 3px; 
+            font-size: 0.8em;
+        }
+        .empty-state { 
+            text-align: center; 
+            padding: 40px; 
+            color: #6c757d;
+        }
+        .batch-actions { 
+            margin-bottom: 20px; 
+            padding: 15px; 
+            background: #e9ecef; 
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'conversations_list' %}">Conversations</a></li>
+                <li class="breadcrumb-item active">Unread Messages</li>
+            </ol>
+        </nav>
+
+        <div class="unread-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2>Unread Messages</h2>
+                    <p class="mb-0">You have <strong>{{ unread_count }}</strong> unread message{{ unread_count|pluralize }}</p>
+                </div>
+                {% if unread_count > 0 %}
+                <form method="post" action="{% url 'mark_all_read' %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success" onclick="return confirm('Mark all messages as read?')">
+                        Mark All as Read
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if unread_count > 0 %}
+            <!-- Batch Actions -->
+            <div class="batch-actions">
+                <div class="btn-group">
+                    <form method="post" action="{% url 'mark_all_read' %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-success">Mark All Read</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Unread Messages by Conversation -->
+            {% for conversation_data in page_obj %}
+            <div class="conversation-group">
+                <div class="conversation-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-1">
+                                Conversation with 
+                                {% if conversation_data.root_message.sender == request.user %}
+                                    {{ conversation_data.root_message.receiver.username }}
+                                {% else %}
+                                    {{ conversation_data.root_message.sender.username }}
+                                {% endif %}
+                            </h5>
+                            <small class="text-muted">
+                                {{ conversation_data.unread_messages|length }} unread message{{ conversation_data.unread_messages|length|pluralize }}
+                            </small>
+                        </div>
+                        <form method="post" action="{% url 'mark_conversation_read' conversation_data.root_message.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-success">
+                                Mark Conversation Read
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                {% for message in conversation_data.unread_messages %}
+                <div class="unread-message" id="message-{{ message.id }}">
+                    <div class="message-header d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong>{{ message.sender.username }}</strong>
+                            <small class="text-muted ml-2">{{ message.timestamp|timesince }} ago</small>
+                            {% if message.parent_message %}
+                                <span class="badge badge-info ml-2">Reply</span>
+                            {% endif %}
+                        </div>
+                        <form method="post" action="{% url 'mark_message_read' message.id %}" class="mark-read-form">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-mark-read">Mark Read</button>
+                        </form>
+                    </div>
+                    
+                    <div class="message-content mt-2">
+                        {{ message.content|linebreaks|truncatewords:50 }}
+                    </div>
+                    
+                    <div class="message-actions">
+                        <a href="{% url 'message_thread' conversation_data.root_message.id %}#message-{{ message.id }}" 
+                           class="btn btn-sm btn-primary">View in Conversation</a>
+                        
+                        {% if message.parent_message %}
+                        <a href="{% url 'message_thread' conversation_data.root_message.id %}#message-{{ message.parent_message.id }}" 
+                           class="btn btn-sm btn-outline-secondary">View Parent</a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+            <nav aria-label="Unread messages pages">
+                <ul class="pagination">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                    <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                    </li>
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+        {% else %}
+            <div class="empty-state">
+                <h3>🎉 All Caught Up!</h3>
+                <p>You don't have any unread messages.</p>
+                <a href="{% url 'conversations_list' %}" class="btn btn-primary">View All Conversations</a>
+            </div>
+        {% endif %}
+    </div>
+
+    <li class="nav-item">
+      <a class="nav-link" href="{% url 'unread_messages' %}">
+        Unread Messages
+        {% if unread_messages_count > 0 %}
+        <span class="badge badge-danger unread-count">{{ unread_messages_count }}</span>
+        {% endif %}
+      </a>
+    </li>
+
+    <script>
+    // AJAX mark as read
+    document.querySelectorAll('.mark-read-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const messageElement = this.closest('.unread-message');
+            const messageId = messageElement.id.split('-')[1];
+            
+            fetch(this.action, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Remove the message from view with animation
+                    messageElement.style.opacity = '0';
+                    setTimeout(() => {
+                        messageElement.remove();
+                        // Update unread count
+                        updateUnreadCount();
+                    }, 300);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error marking message as read');
+            });
+        });
+    });
+
+    function updateUnreadCount() {
+        // You could implement a counter update here
+        const unreadMessages = document.querySelectorAll('.unread-message');
+        if (unreadMessages.length === 0) {
+            location.reload(); // Reload when all messages are read
+        }
+    }
+
+    // Auto-refresh unread count every minute
+    setInterval(() => {
+        fetch('{% url "unread_messages_count_api" %}')
+            .then(response => response.json())
+            .then(data => {
+                // Update any unread count indicators on the page
+                const countElements = document.querySelectorAll('.unread-count');
+                countElements.forEach(el => {
+                    el.textContent = data.unread_count;
+                });
+            });
+    }, 60000);
+    </script>
+</body>
+</html>

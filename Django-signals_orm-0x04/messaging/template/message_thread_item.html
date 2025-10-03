@@ -1,0 +1,40 @@
+<div class="message-bubble {% if depth > 0 %}reply-bubble{% endif %} {% if not message.is_read and message.receiver == user %}unread{% endif %}" 
+     style="--depth: {{ depth }};">
+    
+    <div class="message-header">
+        <div>
+            <strong>{{ message.sender.username }}</strong>
+            {% if message.edited %}
+                <small class="text-muted">(edited {{ message.edited_at|timesince }} ago)</small>
+            {% endif %}
+        </div>
+        <div>
+            <small>{{ message.timestamp|timesince }} ago</small>
+        </div>
+    </div>
+    
+    <div class="message-content">
+        {{ message.content|linebreaks }}
+    </div>
+    
+    <div class="message-actions">
+        {% if message.sender == user %}
+            <a href="{% url 'edit_message' message.id %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+        {% endif %}
+        
+        {% if depth < 5 %}  {# Limit reply depth for UI sanity #}
+            <button class="btn btn-sm btn-outline-primary reply-btn" 
+                    data-message-id="{{ message.id }}"
+                    data-username="{{ message.sender.username }}">
+                Reply
+            </button>
+        {% endif %}
+    </div>
+    
+    <!-- Nested Replies -->
+    {% if replies %}
+        {% for reply_item in replies %}
+            {% include 'message_thread_item.html' with message=reply_item.message depth=reply_item.depth replies=reply_item.replies %}
+        {% endfor %}
+    {% endif %}
+</div>

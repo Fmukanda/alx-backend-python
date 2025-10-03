@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Account Settings</title>
+</head>
+<body>
+    <div class="container">
+        <h2>Account Settings</h2>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5>Account Information</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Username:</strong> {{ user.username }}</p>
+                <p><strong>Email:</strong> {{ user.email }}</p>
+                <p><strong>Member since:</strong> {{ user_stats.account_created|date:"F j, Y" }}</p>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>Your Data</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Sent Messages:</strong> {{ user_stats.sent_messages }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Received Messages:</strong> {{ user_stats.received_messages }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Notifications:</strong> {{ user_stats.notifications }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Edits Made:</strong> {{ user_stats.edits_made }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4 border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5>Danger Zone</h5>
+            </div>
+            <div class="card-body">
+                <p>Once you delete your account, there is no going back. Please be certain.</p>
+                <a href="{% url 'delete_account' %}" class="btn btn-danger">
+                    Delete My Account
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

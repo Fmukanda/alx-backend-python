@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Delete Account</title>
+    <style>
+        .delete-container { max-width: 600px; margin: 40px auto; padding: 20px; }
+        .warning-box { background: #fff3cd; border: 1px solid #ffeaa7; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+        .stats-box { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .form-group { margin-bottom: 20px; }
+        .btn-delete { background: #dc3545; color: white; }
+        .btn-delete:hover { background: #c82333; }
+    </style>
+</head>
+<body>
+    <div class="delete-container">
+        <h2>Delete Your Account</h2>
+        
+        <div class="warning-box">
+            <h4>⚠️ Warning: This action cannot be undone!</h4>
+            <p>Once you delete your account, all of your data will be permanently removed, including:</p>
+            <ul>
+                <li>All messages you've sent and received ({{ user_stats.sent_messages }} sent, {{ user_stats.received_messages }} received)</li>
+                <li>All notifications ({{ user_stats.notifications }})</li>
+                <li>All message edit history ({{ user_stats.edits_made }} edits)</li>
+                <li>Your profile information and preferences</li>
+            </ul>
+            <p><strong>This action is irreversible. Please be certain.</strong></p>
+        </div>
+
+        <div class="stats-box">
+            <h5>Data that will be deleted:</h5>
+            <div class="row">
+                <div class="col-md-6">
+                    <strong>Sent Messages:</strong> {{ user_stats.sent_messages }}
+                </div>
+                <div class="col-md-6">
+                    <strong>Received Messages:</strong> {{ user_stats.received_messages }}
+                </div>
+                <div class="col-md-6">
+                    <strong>Notifications:</strong> {{ user_stats.notifications }}
+                </div>
+                <div class="col-md-6">
+                    <strong>Edits Made:</strong> {{ user_stats.edits_made }}
+                </div>
+            </div>
+        </div>
+
+        <form method="post" id="delete-form">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                    {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <div class="form-group">
+                <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+                {{ form.password }}
+                {% if form.password.errors %}
+                <div class="text-danger">
+                    {% for error in form.password.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <small class="form-text text-muted">{{ form.password.help_text }}</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ form.confirmation.id_for_label }}">{{ form.confirmation.label }}</label>
+                {{ form.confirmation }}
+                {% if form.confirmation.errors %}
+                <div class="text-danger">
+                    {% for error in form.confirmation.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <small class="form-text text-muted">{{ form.confirmation.help_text }}</small>
+            </div>
+            
+            <div class="form-group form-check">
+                <input type="checkbox" class="form-check-input" id="confirmUnderstand" required>
+                <label class="form-check-label" for="confirmUnderstand">
+                    I understand that this action cannot be undone and all my data will be permanently deleted.
+                </label>
+            </div>
+            
+            <div class="form-group">
+                <button type="submit" class="btn btn-delete" id="delete-btn" disabled>
+                    Permanently Delete My Account
+                </button>
+                <a href="{% url 'account_settings' %}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+    document.getElementById('confirmUnderstand').addEventListener('change', function() {
+        document.getElementById('delete-btn').disabled = !this.checked;
+    });
+
+    document.getElementById('delete-form').addEventListener('submit', function(e) {
+        if (!confirm('Are you absolutely sure? This will permanently delete your account and all associated data!')) {
+            e.preventDefault();
+        }
+    });
+    </script>
+</body>
+</html>

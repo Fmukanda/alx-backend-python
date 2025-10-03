@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Message Details</title>
+    <style>
+        .message-container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .message-header { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .message-content { background: white; padding: 20px; border: 1px solid #dee2e6; border-radius: 5px; }
+        .edit-indicator { color: #6c757d; font-size: 0.9em; }
+        .history-item { border-left: 3px solid #007bff; padding: 10px; margin: 10px 0; background: #f8f9fa; }
+        .old-content { background: #ffe6e6; padding: 5px; border-radius: 3px; }
+        .new-content { background: #e6ffe6; padding: 5px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="message-container">
+        <div class="message-header">
+            <h2>Message Details</h2>
+            <p>
+                From: <strong>{{ message.sender.username }}</strong> | 
+                To: <strong>{{ message.receiver.username }}</strong> |
+                Sent: {{ message.timestamp }}
+                {% if message.edited %}
+                    <span class="edit-indicator">
+                        • Edited {{ message.edited_at }} ({{ message.edit_count }} time{{ message.edit_count|pluralize }})
+                    </span>
+                {% endif %}
+            </p>
+            
+            {% if message.sender == request.user %}
+            <div class="actions">
+                <a href="{% url 'edit_message' message.id %}" class="btn btn-primary">Edit Message</a>
+                <button onclick="deleteMessage({{ message.id }})" class="btn btn-danger">Delete Message</button>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="message-content">
+            <h4>Current Content:</h4>
+            <p>{{ message.content|linebreaks }}</p>
+        </div>
+
+        {% if edit_history %}
+        <div class="edit-history">
+            <h3>Edit History</h3>
+            {% for history in edit_history %}
+            <div class="history-item">
+                <strong>Edited by {{ history.edited_by.username }} on {{ history.edited_at }}</strong>
+                {% if history.edit_reason %}
+                    <br><em>Reason: {{ history.edit_reason }}</em>
+                {% endif %}
+                <div class="content-diff">
+                    <div class="old-content">
+                        <strong>Before:</strong> {{ history.old_content }}
+                    </div>
+                    <div class="new-content">
+                        <strong>After:</strong> {{ history.new_content }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+    function deleteMessage(messageId) {
+        if (confirm('Are you sure you want to delete this message?')) {
+            fetch(`/message/${messageId}/delete/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    window.location.href = '/'; // Redirect to messages list
+                }
+            });
+        }
+    }
+    </script>
+</body>
+</html>

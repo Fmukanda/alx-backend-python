@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Notifications</title>
+</head>
+<body>
+    <h1>Your Notifications ({{ unread_count }} unread)</h1>
+    
+    <div class="notifications">
+        {% for notification in notifications %}
+        <div class="notification {% if not notification.is_read %}unread{% endif %}" 
+             data-notification-id="{{ notification.id }}">
+            <h3>{{ notification.title }}</h3>
+            <p>{{ notification.message_content }}</p>
+            <small>{{ notification.created_at }}</small>
+            {% if not notification.is_read %}
+            <button onclick="markAsRead({{ notification.id }})">Mark as read</button>
+            {% endif %}
+        </div>
+        {% empty %}
+        <p>No notifications yet.</p>
+        {% endfor %}
+    </div>
+
+    <script>
+    function markAsRead(notificationId) {
+        fetch(`/notifications/${notificationId}/read/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            }
+        });
+    }
+    </script>
+</body>
+</html>

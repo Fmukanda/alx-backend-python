@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Conversation Thread</title>
+    <style>
+        .message-container { max-width: 800px; margin: 0 auto; }
+        .message-bubble { 
+            border: 1px solid #dee2e6; 
+            border-radius: 10px; 
+            padding: 15px; 
+            margin-bottom: 15px;
+            background: white;
+        }
+        .reply-bubble { 
+            margin-left: calc(30px * var(--depth));
+            background: #f8f9fa;
+            border-left: 3px solid #007bff;
+        }
+        .message-header { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+        .message-actions { margin-top: 10px; }
+        .reply-form-container { 
+            background: #e9ecef; 
+            padding: 15px; 
+            border-radius: 5px; 
+            margin-top: 20px;
+        }
+        .thread-indicator { 
+            width: 2px; 
+            background: #007bff; 
+            margin-right: 15px;
+        }
+        .unread { border-left: 3px solid #28a745; }
+    </style>
+</head>
+<body>
+    <div class="container message-container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'conversations_list' %}">Conversations</a></li>
+                <li class="breadcrumb-item active">Thread</li>
+            </ol>
+        </nav>
+
+        <h4>
+            Conversation between 
+            <strong>{{ root_message.sender.username }}</strong> and 
+            <strong>{{ root_message.receiver.username }}</strong>
+        </h4>
+
+        <!-- Thread Display -->
+        <div id="thread-container">
+            {% for item in thread_structure %}
+                {% include 'message_thread_item.html' with message=item.message depth=item.depth replies=item.replies %}
+            {% endfor %}
+        </div>
+
+        <!-- Reply Form -->
+        <div class="reply-form-container">
+            <h5>Reply to this conversation</h5>
+            <form method="post" action="{% url 'send_reply' root_message.id %}" id="reply-form">
+                {% csrf_token %}
+                <div class="form-group">
+                    {{ reply_form.content }}
+                </div>
+                <button type="submit" class="btn btn-primary">Send Reply</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    document.getElementById('reply-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        
+        fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Clear form
+                document.getElementById('id_content').value = '';
+                
+                // Reload thread or dynamically add the new message
+                window.location.reload();
+            } else {
+                alert('Error sending reply: ' + JSON.stringify(data.errors));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error sending reply');
+        });
+    });
+
+    // Auto-expand textarea as user types
+    document.getElementById('id_content').addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+    });
+    </script>
+</body>
+</html>
