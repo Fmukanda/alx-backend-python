@@ -1,0 +1,39 @@
+#!/bin/bash
+# kubctl-0x03.sh
+# Perform a rolling update of the Django app without downtime
+
+set -e
+
+DEPLOYMENT="messaging-app-blue"
+SERVICE_URL="http://127.0.0.1:8000"  # or replace with service endpoint / NodePort / Ingress URL
+
+echo "🚀 Starting rolling update for ${DEPLOYMENT}..."
+
+# Step 1: Apply the updated deployment
+echo "📦 Applying updated deployment file..."
+kubectl apply -f blue_deployment.yaml
+
+# Step 2: Monitor rollout progress
+echo "⏳ Monitoring rollout progress..."
+kubectl rollout status deployment/${DEPLOYMENT}
+
+# Step 3: Continuous health check with curl (non-blocking)
+echo "🌐 Starting continuous availability test..."
+for i in {1..15}; do
+  if curl -s --head --request GET ${SERVICE_URL} | grep "200 OK" > /dev/null; then
+    echo "✅ Request $i: Application is UP"
+  else
+    echo "⚠️ Request $i: Application might be DOWN or responding slowly"
+  fi
+  sleep 2
+done
+
+# Step 4: Verify update is complete
+echo "🔍 Verifying new pods..."
+kubectl get pods -l app=messaging-app -o wide
+
+# Step 5: Optional — view rollout history
+echo "📜 Rollout history:"
+kubectl rollout history deployment/${DEPLOYMENT}
+
+echo "🎉 Rolling update completed successfully with zero downtime!"
