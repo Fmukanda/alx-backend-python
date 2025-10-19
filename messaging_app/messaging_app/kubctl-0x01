@@ -1,0 +1,48 @@
+#!/bin/bash
+# kubctl-0x01.sh
+# Scale, test, and monitor a Django app deployment on Kubernetes
+
+set -e  # Exit immediately if any command fails
+
+echo "🚀 Starting kubctl-0x01 script..."
+
+# Step 1: Scale Django app replicas to 3
+echo "⚙️ Scaling deployment 'messaging-app-deployment' to 3 replicas..."
+kubectl scale deployment messaging-app-deployment --replicas=3
+
+# Wait a few seconds for the pods to spin up
+echo "⏳ Waiting for new pods to start..."
+sleep 15
+
+# Step 2: Verify that multiple pods are running
+echo "🔍 Checking pod status..."
+kubectl get pods -l app=messaging-app
+
+# Step 3: Load testing using wrk
+# Ensure wrk is installed
+if ! command -v wrk &> /dev/null
+then
+    echo "❌ wrk is not installed. Installing it..."
+    # For Ubuntu/Debian:
+    sudo apt-get update && sudo apt-get install -y wrk
+    # For macOS (if using brew):
+    # brew install wrk
+fi
+
+# Use port-forwarding to access the app locally (run in background)
+echo "🔁 Setting up port-forwarding..."
+kubectl port-forward service/messaging-app-service 8000:8000 >/dev/null 2>&1 &
+PORT_FORWARD_PID=$!
+sleep 5  # Give it a moment to start
+
+echo "💥 Performing load test using wrk..."
+wrk -t4 -c100 -d30s http://127.0.0.1:8000/
+
+# Stop port forwarding after test
+kill $PORT_FORWARD_PID >/dev/null 2>&1
+
+# Step 4: Monitor resource usage
+echo "📊 Checking resource usage for pods..."
+kubectl top pods
+
+echo "✅ kubctl-0x01 script completed successfully!"
