@@ -1,0 +1,16 @@
+# commands.txt
+
+# Enable ingress controller (for Minikube)
+minikube addons enable ingress
+
+# Verify ingress controller
+kubectl get pods -n kube-system | grep ingress
+
+# Apply ingress resource
+kubectl apply -f ingress.yaml
+
+# Verify ingress rules
+kubectl get ingress
+
+# (Optional) Start tunnel to access via local domain
+minikube tunnel
