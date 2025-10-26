@@ -1,0 +1,290 @@
+name: Django Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  PYTHON_VERSION: '3.10'
+  DATABASE_URL: mysql://root:password@127.0.0.1:3306/test_db
+  SECRET_KEY: 'test-secret-key-for-ci-cd'
+  COVERAGE_THRESHOLD: '80'  # Minimum coverage percentage
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install linting tools
+      run: |
+        pip install flake8 flake8-django flake8-black flake8-isort
+
+    - name: Run flake8 with Django-specific rules
+      run: |
+        # Configure flake8 to fail on any errors
+        flake8 . \
+          --count \
+          --show-source \
+          --statistics \
+          --max-complexity=10 \
+          --max-line-length=88 \
+          --select=E9,F63,F7,F82 \
+          --extend-ignore=E203,W503 \
+          || echo "Flake8 check completed with errors"
+
+    - name: Fail build if flake8 errors detected
+      run: |
+        flake8 . \
+          --count \
+          --show-source \
+          --statistics \
+          --max-complexity=10 \
+          --max-line-length=88 \
+          --exit-zero > flake8_report.txt || true
+        
+        # Check if there are any errors
+        if [ -s flake8_report.txt ]; then
+          echo "❌ Flake8 found linting errors:"
+          cat flake8_report.txt
+          echo "## 🔍 Flake8 Linting Errors" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat flake8_report.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          exit 1
+        else
+          echo "✅ No flake8 errors found"
+          echo "## ✅ Flake8 Linting Passed" >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Check code formatting with Black
+      run: |
+        pip3 install black
+        black --check --diff . || echo "Black check failed"
+
+    - name: Check import sorting with isort
+      run: |
+        pip3 install isort
+        isort --check-only --diff . || echo "isort check failed"
+
+    - name: Upload flake8 report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: linting-reports
+        path: |
+          flake8_report.txt
+        retention-days: 30
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint  # Only run tests if linting passes
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: test_db
+          MYSQL_USER: test_user
+          MYSQL_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          default-libmysqlclient-dev \
+          build-essential \
+          pkg-config \
+          mysql-client
+
+    - name: Cache pip packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip3 install -r requirements.txt
+        pip3 install pytest pytest-html pytest-cov pytest-django mysqlclient coverage
+
+    - name: Wait for MySQL to be ready
+      run: |
+        while ! mysqladmin ping -h"127.0.0.1" -P3306 -u"root" -p"password" --silent; do
+          echo "Waiting for MySQL..."
+          sleep 2
+        done
+        echo "MySQL is ready!"
+
+    - name: Create test database and user
+      run: |
+        mysql -h 127.0.0.1 -P 3306 -u root -ppassword -e "
+          CREATE DATABASE IF NOT EXISTS test_db;
+          CREATE USER IF NOT EXISTS 'test_user'@'%' IDENTIFIED BY 'test_password';
+          GRANT ALL PRIVILEGES ON test_db.* TO 'test_user'@'%';
+          FLUSH PRIVILEGES;
+        "
+
+    - name: Run database migrations
+      env:
+        DEBUG: 'True'
+        SECRET_KEY: ${{ env.SECRET_KEY }}
+        DATABASE_URL: ${{ env.DATABASE_URL }}
+      run: |
+        python manage.py makemigrations --dry-run --check
+        python manage.py migrate
+
+    - name: Run Django tests with pytest and generate coverage
+      env:
+        DEBUG: 'True'
+        SECRET_KEY: ${{ env.SECRET_KEY }}
+        DATABASE_URL: ${{ env.DATABASE_URL }}
+        PYTHONPATH: ${{ github.workspace }}
+      run: |
+        mkdir -p test-results
+        # Run tests with coverage and fail under threshold
+        pytest tests/ \
+          --ds=your_project.settings \
+          --cov=.\
+          --cov-report=html:test-results/coverage-html \
+          --cov-report=xml:test-results/coverage.xml \
+          --cov-report=term-missing \
+          --cov-fail-under=${{ env.COVERAGE_THRESHOLD }} \
+          --junitxml=test-results/junit-report.xml \
+          --html=test-results/report.html \
+          -v
+
+    - name: Run Django's built-in test suite
+      env:
+        DEBUG: 'True'
+        SECRET_KEY: ${{ env.SECRET_KEY }}
+        DATABASE_URL: ${{ env.DATABASE_URL }}
+      run: |
+        python manage.py test --noinput
+
+    - name: Generate detailed coverage report
+      if: always()
+      run: |
+        coverage html -d test-results/coverage-detailed
+        coverage report --show-missing
+
+    - name: Upload test results and coverage reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-and-coverage
+        path: |
+          test-results/
+        retention-days: 30
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      if: always()
+      with:
+        file: ./test-results/coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+    - name: Display coverage summary
+      if: always()
+      run: |
+        echo "## 📊 Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
+        if [ -f test-results/coverage.xml ]; then
+          echo "Coverage reports generated successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "- HTML Report: Available in artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- XML Report: Available for Codecov" >> $GITHUB_STEP_SUMMARY
+          echo "- Minimum Coverage: ${{ env.COVERAGE_THRESHOLD }}%" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Coverage reports were not generated" >> $GITHUB_STEP_SUMMARY
+        fi
+
+  security:
+    runs-on: ubuntu-latest
+    needs: lint  # Only run security if linting passes
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install security tools
+      run: |
+        pip3 install bandit safety
+
+    - name: Run bandit security scan
+      run: |
+        bandit -r . -f html -o security-report.html || true
+
+    - name: Check for vulnerable dependencies
+      run: |
+        safety check --json --output security-vulnerabilities.json || true
+
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          security-report.html
+          security-vulnerabilities.json
+        retention-days: 30
+
+  coverage-badge:
+    runs-on: ubuntu-latest
+    needs: test  # Only run after tests complete
+    if: always()
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download coverage artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: test-results-and-coverage
+
+    - name: Generate coverage badge
+      run: |
+        # This is a simple badge generation - you might want to use a proper badge service
+        TOTAL_COVERAGE=$(grep -oP 'line-rate="\K[0-9.]+' coverage.xml | head -1)
+        if [ ! -z "$TOTAL_COVERAGE" ]; then
+          COVERAGE_PERCENT=$(echo "$TOTAL_COVERAGE * 100" | bc -l | xargs printf "%.1f")
+          echo "Coverage: ${COVERAGE_PERCENT}%"
+          # You can update a badge here or generate a simple status
+          echo "## 🛡️ Code Coverage: ${COVERAGE_PERCENT}%" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "Could not extract coverage percentage"
+          echo "## ❌ Coverage data not available" >> $GITHUB_STEP_SUMMARY
+        fi
