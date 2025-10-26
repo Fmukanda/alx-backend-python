@@ -61,7 +61,7 @@ pipeline {
                     sh '''
                         python -m venv venv
                         . venv/bin/activate
-                        pip install --upgrade pip
+                        pip3 install --upgrade pip
                         
                         # Install system dependencies required for MySQL
                         sudo apt-get update || true
@@ -77,9 +77,9 @@ pipeline {
                     echo 'Installing dependencies...'
                     sh '''
                         . venv/bin/activate
-                        pip install -r requirements.txt
+                        pip3 install -r messaging_app/requirements.txt
                         # Install pytest and reporting tools
-                        pip install pytest pytest-html pytest-cov django-test-plus
+                        pip3 install pytest pytest-html pytest-cov django-test-plus
                     '''
                 }
             }
