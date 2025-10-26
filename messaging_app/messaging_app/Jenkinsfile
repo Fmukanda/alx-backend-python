@@ -20,7 +20,7 @@ pipeline {
                     echo 'Cloning repository from GitHub...'
                     git branch: "${BRANCH}",
                         url: "${GIT_REPO}",
-                        credentialsId: 'github-credentials'
+                        credentialsId: '480dc6a1-b85d-4f36-b38e-5bc3f8acbc0d'
                 }
             }
         }
